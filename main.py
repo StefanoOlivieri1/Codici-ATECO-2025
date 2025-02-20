@@ -18,7 +18,7 @@ data_manager = DataManager()
 
 # Titolo principale
 st.title("📊 Ricerca Codici ATECO")
-st.markdown("***Ricerca per codice o descrizione delle attività economiche***")
+st.markdown("***Ricerca avanzata per codici e attività economiche***")
 
 # Creazione delle colonne per i filtri di ricerca
 col1, col2 = st.columns(2)
@@ -29,42 +29,68 @@ with col1:
         placeholder="Es. 01.11"
     )
 
+    # Aggiunta filtro per livello gerarchico
+    code_level = st.select_slider(
+        "Livello di dettaglio del codice",
+        options=["Tutti", "Sezione", "Divisione", "Gruppo", "Classe", "Categoria", "Sottocategoria"],
+        value="Tutti"
+    )
+
 with col2:
     search_desc = st.text_input(
         "Ricerca per Descrizione",
         placeholder="Es. coltivazione cereali"
     )
 
-# Esecuzione della ricerca
+    # Aggiunta ordinamento
+    sort_by = st.selectbox(
+        "Ordina risultati per",
+        options=["Codice", "Descrizione", "Sezione", "Divisione"],
+        index=0
+    )
+
+# Filtri avanzati in un expander
+with st.expander("Filtri Avanzati", expanded=False):
+    filter_col1, filter_col2, filter_col3 = st.columns(3)
+
+    with filter_col1:
+        # Lista delle sezioni disponibili
+        sezioni = data_manager.get_sezioni()
+        selected_sezione = st.selectbox(
+            "Filtra per Sezione",
+            options=["Tutte"] + list(sezioni),
+            key="sezione_filter"
+        )
+
+    with filter_col2:
+        # Lista delle divisioni disponibili (aggiornata in base alla sezione selezionata)
+        divisioni = data_manager.get_divisioni(sezione=selected_sezione if selected_sezione != "Tutte" else None)
+        selected_divisione = st.selectbox(
+            "Filtra per Divisione",
+            options=["Tutte"] + list(divisioni),
+            key="divisione_filter"
+        )
+
+    with filter_col3:
+        # Opzione per mostrare solo i codici foglia (ultimo livello)
+        show_leaf_only = st.checkbox("Mostra solo codici di ultimo livello", value=False)
+
+# Esecuzione della ricerca con i filtri avanzati
 results = data_manager.search(
     code=search_code,
-    description=search_desc
+    description=search_desc,
+    sezione=selected_sezione if selected_sezione != "Tutte" else None,
+    divisione=selected_divisione if selected_divisione != "Tutte" else None,
+    code_level=code_level if code_level != "Tutti" else None,
+    leaf_only=show_leaf_only
 )
 
 # Visualizzazione dei risultati
 if results is not None and not results.empty:
     st.markdown("### Risultati della ricerca")
-    
-    # Aggiunta di filtri per le colonne
-    col_filter1, col_filter2 = st.columns(2)
-    
-    with col_filter1:
-        divisione_filter = st.multiselect(
-            "Filtra per Divisione",
-            options=sorted(results['Divisione'].unique())
-        )
-    
-    with col_filter2:
-        sezione_filter = st.multiselect(
-            "Filtra per Sezione",
-            options=sorted(results['Sezione'].unique())
-        )
 
-    # Applicazione dei filtri
-    if divisione_filter:
-        results = results[results['Divisione'].isin(divisione_filter)]
-    if sezione_filter:
-        results = results[results['Sezione'].isin(sezione_filter)]
+    # Ordinamento dei risultati
+    results = results.sort_values(sort_by)
 
     # Visualizzazione della tabella dei risultati
     st.dataframe(
@@ -78,7 +104,7 @@ if results is not None and not results.empty:
             "Divisione": st.column_config.TextColumn("Divisione", width="medium")
         }
     )
-    
+
     # Mostra il numero di risultati
     st.info(f"Trovati {len(results)} risultati")
 
@@ -91,5 +117,6 @@ st.markdown("""
     <div class='footer'>
         <p>Questa applicazione permette di cercare i codici ATECO 2007. 
         È possibile effettuare la ricerca sia per codice che per descrizione dell'attività.</p>
+        <p>Utilizzare i filtri avanzati per una ricerca più precisa.</p>
     </div>
     """, unsafe_allow_html=True)
