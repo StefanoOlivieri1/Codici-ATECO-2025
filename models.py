@@ -7,7 +7,7 @@ Base = declarative_base()
 
 class CodeAteco(Base):
     __tablename__ = 'codici_ateco'
-    
+
     codice = Column(String, primary_key=True)
     descrizione = Column(String, nullable=False)
     sezione = Column(String, nullable=False)
@@ -18,11 +18,14 @@ class CodeAteco(Base):
 
 # Configurazione del database
 DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
 engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(bind=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():
-    Base.metadata.create_all(engine)
+    Base.metadata.create_all(bind=engine)
 
 def get_db():
     db = SessionLocal()
