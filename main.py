@@ -115,7 +115,7 @@ elif search_code or search_desc:
 st.markdown("---")
 st.markdown("""
     <div class='footer'>
-        <p>Questa applicazione permette di cercare i codici ATECO 2007. 
+        <p>Questa applicazione permette di cercare i codici ATECO 2025. 
         È possibile effettuare la ricerca sia per codice che per descrizione dell'attività.</p>
         <p>Utilizzare i filtri avanzati per una ricerca più precisa.</p>
     </div>
