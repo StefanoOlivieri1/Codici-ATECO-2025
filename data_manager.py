@@ -1,6 +1,6 @@
 import pandas as pd
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from models import CodeAteco, get_db
 
 class DataManager:
@@ -26,14 +26,16 @@ class DataManager:
         query = self._db.query(CodeAteco)
 
         if code:
-            code = str(code).lower()
+            code = str(code).strip()
             print(f"Cercando codice che inizia con: {code}")
-            query = query.filter(CodeAteco.codice.ilike(f"{code}%"))
+            # Rimuovi eventuali spazi e rendi case-insensitive
+            query = query.filter(func.lower(CodeAteco.codice).like(f"{code.lower()}%"))
 
         if description:
-            description = description.lower()
+            description = description.strip()
             print(f"Cercando descrizione che contiene: {description}")
-            query = query.filter(CodeAteco.descrizione.ilike(f"%{description}%"))
+            # Rendi case-insensitive e cerca parole parziali
+            query = query.filter(func.lower(CodeAteco.descrizione).like(f"%{description.lower()}%"))
 
         results = query.all()
         print(f"Trovati {len(results)} risultati")
@@ -49,7 +51,11 @@ class DataManager:
             'Divisione': r.divisione
         } for r in results]
 
-        return pd.DataFrame(data).sort_values('Codice')
+        df = pd.DataFrame(data)
+        print("Colonne del DataFrame:", df.columns.tolist())
+        print("Prime righe:", df.head())
+
+        return df.sort_values('Codice')
 
     def import_from_csv(self, csv_path='data/codici_ateco.csv'):
         """
