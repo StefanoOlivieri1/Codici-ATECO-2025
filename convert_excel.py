@@ -8,17 +8,20 @@ def convert_and_import_excel():
     db = next(get_db())
 
     print("Lettura del file Excel...")
-    # Leggi il file Excel saltando le prime righe di intestazione
     df = pd.read_excel(
         'attached_assets/StrutturaATECO-2025-IT-EN-1.xlsx',
-        skiprows=10  # Salta le prime 10 righe di intestazione
+        sheet_name="ATECO 2025 Struttura"
     )
+
+    print("Struttura del DataFrame:")
+    print(df.columns.tolist())
+    print("\nPrime righe:")
+    print(df.head())
 
     # Rinomina le colonne secondo il formato atteso
     df = df.rename(columns={
         'CODICE_ATECO_2025': 'Codice',
-        'TITOLO_ITALIANO_ATECO_2025': 'Descrizione',
-        'GERARCHIA_ATECO_2025': 'Livello'
+        'TITOLO_ITALIANO_ATECO_2025': 'Descrizione'
     })
 
     # Pulizia del database esistente
@@ -26,24 +29,56 @@ def convert_and_import_excel():
     db.query(CodeAteco).delete()
     db.commit()
 
+    # Funzione per estrarre la sezione dal codice
+    def get_section(code):
+        if pd.isna(code):
+            return ''
+        code = str(code).strip()
+        if len(code) == 1:  # È una sezione
+            return code
+        # Se il codice inizia con un numero, cerca l'ultima sezione vista
+        return current_section
+
+    # Funzione per estrarre la divisione dal codice
+    def get_division(code):
+        if pd.isna(code):
+            return ''
+        code = str(code).strip()
+        if code.isalpha():  # È una sezione
+            return code
+        parts = code.split('.')
+        if len(parts) > 0 and parts[0].isdigit():
+            return parts[0].zfill(2)  # Assicura che la divisione sia sempre di 2 cifre
+        return ''
+
     print("Importazione dei nuovi dati...")
+    current_section = ''
     for _, row in df.iterrows():
         try:
+            if pd.isna(row['Codice']) or pd.isna(row['Descrizione']):
+                continue
+
             codice = str(row['Codice']).strip()
             descrizione = str(row['Descrizione']).strip()
 
-            # Estrai sezione e divisione dal codice
-            sezione = codice[0] if len(codice) > 0 else ''
-            divisione = codice.split('.')[0] if '.' in codice else codice[:2]
+            if not codice or not descrizione:
+                continue
 
-            if codice and descrizione:  # Verifica che i campi non siano vuoti
-                code_ateco = CodeAteco(
-                    codice=codice,
-                    descrizione=descrizione,
-                    sezione=sezione,
-                    divisione=divisione
-                )
-                db.add(code_ateco)
+            # Aggiorna la sezione corrente se il codice è una lettera
+            if codice.isalpha() and len(codice) == 1:
+                current_section = codice
+
+            sezione = get_section(codice)
+            divisione = get_division(codice)
+
+            code_ateco = CodeAteco(
+                codice=codice,
+                descrizione=descrizione,
+                sezione=current_section,
+                divisione=divisione
+            )
+            db.add(code_ateco)
+            print(f"Aggiunto codice: {codice} (Sezione: {current_section}, Divisione: {divisione})")
         except Exception as e:
             print(f"Errore nell'importazione della riga {row}: {str(e)}")
             continue

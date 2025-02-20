@@ -18,6 +18,8 @@ class DataManager:
         Returns:
             pd.DataFrame: Risultati della ricerca
         """
+        print(f"Ricerca con codice: {code}, descrizione: {description}")
+
         if not code and not description:
             return None
 
@@ -25,13 +27,16 @@ class DataManager:
 
         if code:
             code = str(code).lower()
+            print(f"Cercando codice che inizia con: {code}")
             query = query.filter(CodeAteco.codice.ilike(f"{code}%"))
 
         if description:
             description = description.lower()
+            print(f"Cercando descrizione che contiene: {description}")
             query = query.filter(CodeAteco.descrizione.ilike(f"%{description}%"))
 
         results = query.all()
+        print(f"Trovati {len(results)} risultati")
 
         if not results:
             return pd.DataFrame()
